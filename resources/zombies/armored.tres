@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="ZombieType" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/zombie_type.gd" id="1_type"]
+[ext_resource type="Texture2D" uid="uid://c3y401mpu801u" path="res://assets/units/armored.png" id="2_tex"]
+
+[resource]
+script = ExtResource("1_type")
+display_name = "Броня"
+texture = ExtResource("2_tex")
+max_hp = 100
+speed = 50.0
+bite_damage = 14
+bite_cooldown = 0.7
+attack_radius = 32.0
+cost = 5
+packs = 2
+pack_size = 4

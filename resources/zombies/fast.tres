@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="ZombieType" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/zombie_type.gd" id="1_type"]
+[ext_resource type="Texture2D" uid="uid://curjhc1xtd3tc" path="res://assets/units/fast.png" id="2_tex"]
+
+[resource]
+script = ExtResource("1_type")
+display_name = "Быстрый"
+texture = ExtResource("2_tex")
+max_hp = 16
+speed = 165.0
+bite_damage = 5
+bite_cooldown = 0.7
+attack_radius = 32.0
+cost = 4
+packs = 3
+pack_size = 4

@@ -11,8 +11,13 @@ config_version=5
 [application]
 
 config/name="Zombie_rush"
+run/main_scene="uid://kypntjeq5p4d"
 config/features=PackedStringArray("4.4", "GL Compatibility")
 config/icon="res://icon.svg"
+
+[autoload]
+
+Config="*res://scripts/autoload/config.gd"
 
 [rendering]
 
