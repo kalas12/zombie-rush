@@ -12,7 +12,7 @@
 [ext_resource type="Texture2D" uid="uid://dctn1otey2xdm" path="res://assets/levels/trees-art/tree_dead.png" id="10_dead"]
 [ext_resource type="Texture2D" uid="uid://cd6ohx88pdcpq" path="res://assets/levels/trees-art/bush.png" id="11_bush"]
 [ext_resource type="Texture2D" uid="uid://5jv6dyaw8qct" path="res://assets/levels/trees-art/rock.png" id="12_rock"]
-[ext_resource type="Script" path="res://scenes/door.gd" id="13_door"]
+[ext_resource type="Script" uid="uid://c6i2cjyloh6ac" path="res://scenes/door.gd" id="13_door"]
 [ext_resource type="Texture2D" uid="uid://bwe3rq5p62bwy" path="res://assets/levels/walls-art/door_closed.png" id="14_doorclosed"]
 [ext_resource type="Texture2D" uid="uid://cjth3napyxr6r" path="res://assets/levels/walls-art/door_broken.png" id="15_doorbroken"]
 [ext_resource type="Texture2D" uid="uid://b257doa8bstg3" path="res://assets/levels/walls-art/window.png" id="16_window"]
