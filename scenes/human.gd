@@ -4,16 +4,17 @@ signal died   # убит
 signal fled   # сбежал за край поля
 
 const Fx = preload("res://scenes/fx.gd")
+const DEFAULT_TYPE := preload("res://resources/humans/shooter.tres")
 
-# Тип защитника выбирается в инспекторе на самом узле Human.
-@export_enum("shooter", "melee") var unit_type := "shooter"
+# Тип защитника задаётся на узле в сцене (arena.tscn). Все статы — из него.
+@export var type: HumanType
 
-# Статы текущего типа — берём из Config в _ready()
-var stats := {}
-
+# Общее поведение (не зависит от типа) — из Config
 var move_speed = Config.HUMAN_MOVE_SPEED
 var melee_chase_range = Config.MELEE_CHASE_RANGE
 var retreat_range = Config.SHOOTER_RETREAT_RANGE
+var panic_hp_frac = Config.PANIC_HP_FRAC
+var panic_speed = Config.PANIC_SPEED
 
 # Интерьер дома (без стен). Защитник не выходит за эти границы — не влипает в стену.
 const ROOM := Rect2(452, 430, 228, 228)
@@ -25,8 +26,6 @@ const ARENA := Rect2(12, 9, 1108, 1070)
 const FLEE_GATE := Vector2(566, 760)
 
 var panicking = false
-var panic_hp_frac = Config.PANIC_HP_FRAC
-var panic_speed = Config.PANIC_SPEED
 
 var hp = 0
 var max_hp = 0
@@ -39,13 +38,16 @@ var tracer_timer = 0.0    # сколько ещё рисовать линию в
 var tracer_to = Vector2.ZERO  # куда стреляли (в локальных координатах)
 
 func _ready():
+	if type == null:
+		type = DEFAULT_TYPE
 	add_to_group("target")
 	home_pos = global_position
 
-	stats = Config.HUMAN[unit_type]
-	max_hp = stats.hp
-	hp = stats.hp
-	ammo = stats.max_ammo
+	max_hp = type.max_hp
+	hp = type.max_hp
+	ammo = type.max_ammo
+	if type.texture != null:
+		$Sprite2D.texture = type.texture
 
 func _physics_process(delta):
 	if fire_timer > 0.0:
@@ -60,7 +62,7 @@ func _physics_process(delta):
 	if reload_timer > 0.0:
 		reload_timer -= delta
 		if reload_timer <= 0.0:
-			ammo = stats.max_ammo
+			ammo = type.max_ammo
 
 	# Мало здоровья — паника: бросает бой и бежит с поля
 	if not panicking and hp <= float(max_hp) * panic_hp_frac:
@@ -73,7 +75,7 @@ func _physics_process(delta):
 	var z_shoot = nearest_zombie_in_range()   # ближайший видимый в радиусе — для атаки
 
 	# --- Движение ---
-	if unit_type == "melee":
+	if type.melee:
 		velocity = _melee_move(z_near)
 	else:
 		velocity = _shooter_move(z_near)
@@ -91,7 +93,7 @@ func _physics_process(delta):
 func _melee_move(z):
 	if z != null and global_position.distance_to(z.global_position) <= melee_chase_range:
 		var d = global_position.distance_to(z.global_position)
-		if d > Config.HUMAN["melee"].attack_range * 0.8:
+		if d > type.attack_range * 0.8:
 			return (z.global_position - global_position).normalized() * move_speed
 		return Vector2.ZERO
 	return _toward_home()
@@ -157,7 +159,7 @@ func nearest_zombie():
 
 # Ближайший зомби, который И в радиусе оружия, И виден (не за стеной). Иначе null.
 func nearest_zombie_in_range():
-	var max_range = stats.attack_range
+	var max_range = type.attack_range
 
 	var candidates = []
 	for z in get_tree().get_nodes_in_group("zombie"):
@@ -186,15 +188,14 @@ func has_line_of_sight(z):
 	return hit.collider == z
 
 func shoot(z):
-	var s = stats
-	fire_timer = s.fire_rate
+	fire_timer = type.fire_rate
 
 	# Пока попадание мгновенное (hitscan). Настоящие пули и окна-бойницы — дальше.
 	if z.has_method("take_damage"):
-		z.take_damage(s.damage)
+		z.take_damage(type.damage)
 
 	# Искра в точке попадания (стрелок — оранжевая, нож — кровь)
-	var spark = Color(1.0, 0.7, 0.3) if unit_type == "shooter" else Color(0.55, 0.06, 0.06)
+	var spark = Color(0.55, 0.06, 0.06) if type.melee else Color(1.0, 0.7, 0.3)
 	Fx.burst(get_parent(), z.global_position, spark, 5, 60.0, 0.18)
 
 	# Короткая линия-трассер + вспышка у ствола
@@ -203,10 +204,10 @@ func shoot(z):
 	queue_redraw()
 
 	# Патроны (у ближнего max_ammo = -1 — пропускаем)
-	if s.max_ammo > 0:
+	if type.max_ammo > 0:
 		ammo -= 1
 		if ammo <= 0:
-			reload_timer = s.reload_time
+			reload_timer = type.reload_time
 
 # Защитник получает урон от укуса зомби
 func take_damage(amount):
@@ -223,7 +224,7 @@ func _draw():
 	# Линия выстрела (трассер) + вспышка у ствола
 	if tracer_timer > 0.0:
 		draw_line(Vector2.ZERO, tracer_to, Color("ff8a3d"), 2.0)
-		if unit_type == "shooter":
+		if not type.melee:
 			draw_circle(Vector2.ZERO, 6.0, Color(1.0, 0.86, 0.45))
 
 	# Полоска HP над защитником — видна всегда (из «02»)

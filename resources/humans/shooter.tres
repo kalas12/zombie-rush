@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="HumanType" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/human_type.gd" id="1_type"]
+[ext_resource type="Texture2D" uid="uid://b8jietqc667cs" path="res://assets/units/shooter.png" id="2_tex"]
+
+[resource]
+script = ExtResource("1_type")
+display_name = "Стрелок"
+texture = ExtResource("2_tex")
+melee = false
+max_hp = 50
+damage = 10
+fire_rate = 0.5
+attack_range = 220.0
+max_ammo = 10
+reload_time = 2.0

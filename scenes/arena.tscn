@@ -1,4 +1,4 @@
-[gd_scene load_steps=28 format=3 uid="uid://kypntjeq5p4d"]
+[gd_scene load_steps=30 format=3 uid="uid://kypntjeq5p4d"]
 
 [ext_resource type="Script" uid="uid://c3y2ui0ygbnqv" path="res://scenes/arena.gd" id="1_e05a3"]
 [ext_resource type="PackedScene" uid="uid://rwb48ej6cxwv" path="res://scenes/zombie.tscn" id="1_wl4x5"]
@@ -20,6 +20,8 @@
 [ext_resource type="Texture2D" uid="uid://cebhjqfaatjod" path="res://assets/levels/ground-art/ground_needles.png" id="18_needles"]
 [ext_resource type="Texture2D" uid="uid://ckryv1bvu562e" path="res://assets/levels/ground-art/ground_roots.png" id="19_roots"]
 [ext_resource type="Texture2D" uid="uid://8vhth03o1tug" path="res://assets/levels/ground-art/ground_path.png" id="20_path"]
+[ext_resource type="Resource" path="res://resources/humans/shooter.tres" id="21_shooter"]
+[ext_resource type="Resource" path="res://resources/humans/melee.tres" id="22_melee"]
 
 [sub_resource type="NavigationPolygon" id="NavigationPolygon_wl4x5"]
 vertices = PackedVector2Array(741, 719, 1091.02, 1052.09, 40.8828, 1055.9, 591, 719, 1091.97, 34.9688, 741, 369, 36.1094, 34.0234, 391, 369, 391, 719, 541, 645, 465, 645, 465, 443, 667, 443, 667, 645, 591, 645, 541, 719)
@@ -369,6 +371,7 @@ position = Vector2(505, 455)
 collision_mask = 3
 motion_mode = 1
 script = ExtResource("3_olpmc")
+type = ExtResource("21_shooter")
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="Human"]
 position = Vector2(1, 3)
@@ -383,6 +386,7 @@ position = Vector2(625, 455)
 collision_mask = 3
 motion_mode = 1
 script = ExtResource("3_olpmc")
+type = ExtResource("21_shooter")
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="Human2"]
 position = Vector2(1, 3)
@@ -397,7 +401,7 @@ position = Vector2(505, 605)
 collision_mask = 3
 motion_mode = 1
 script = ExtResource("3_olpmc")
-unit_type = "melee"
+type = ExtResource("22_melee")
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="Human3"]
 position = Vector2(1, 3)
@@ -412,7 +416,7 @@ position = Vector2(625, 605)
 collision_mask = 3
 motion_mode = 1
 script = ExtResource("3_olpmc")
-unit_type = "melee"
+type = ExtResource("22_melee")
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="Human4"]
 position = Vector2(1, 3)
