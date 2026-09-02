@@ -9,8 +9,7 @@ var packs_left := []          # сколько пачек осталось, па
 var type_buttons := []        # кнопки панели, параллельно zombie_types
 var selected_index := -1      # какой тип выбран сейчас (-1 = ничего)
 
-# --- Таймер боя ---
-var time_left = Config.DAWN_TIME
+# --- Состояние боя ---
 var game_over = false
 var humans_seen = false  # видели ли хоть раз живого человека (защита от мгновенной победы)
 
@@ -21,7 +20,6 @@ var zombies_alive = 0
 var humans_alive = 0
 
 # HUD создаём из кода, узлы в сцену добавлять не нужно
-var timer_label
 var info_label
 var result_label
 var hint_label
@@ -70,16 +68,12 @@ func _build_hud():
 	layer.name = "HUD"
 	add_child(layer)
 
-	timer_label = _make_label(24, Color("ff8a3d"))
-	timer_label.position = Vector2(20, 16)
-	layer.add_child(timer_label)
-
-	info_label = _make_label(18, Color("e7ecf3"))
-	info_label.position = Vector2(20, 50)
+	info_label = _make_label(20, Color("e7ecf3"))
+	info_label.position = Vector2(20, 16)
 	layer.add_child(info_label)
 
 	hint_label = _make_label(20, Color("ff5a5a"))
-	hint_label.position = Vector2(20, 78)
+	hint_label.position = Vector2(20, 46)
 	hint_label.visible = false
 	layer.add_child(hint_label)
 
@@ -129,38 +123,22 @@ func _process(delta):
 	if game_over:
 		return
 
-	time_left -= delta
-	if time_left < 0.0:
-		time_left = 0.0
-
 	# Гасим подсказку
 	if hint_timer > 0.0:
 		hint_timer -= delta
 		if hint_timer <= 0.0:
 			hint_label.visible = false
 
-	timer_label.text = "Рассвет через %s" % _format_time(time_left)
 	info_label.text = "Зомби на карте: %d    Людей живо: %d" % [zombies_alive, humans_alive]
 
-	# Победа: всех людей убили или разогнали
+	# Победа: всех защитников убили или разогнали
 	if humans_seen and humans_alive <= 0:
 		_end_game("ПОБЕДА")
 		return
 
-	# Поражение: взошло солнце
-	if time_left <= 0.0:
-		_end_game("РАССВЕТ — ПОРАЖЕНИЕ")
-		return
-
-	# Поражение: пачки всех типов кончились и на карте пусто
+	# Поражение: пачки всех типов кончились и на карте пусто (таймера-рассвета больше нет)
 	if _all_packs_empty() and zombies_alive <= 0:
 		_end_game("ЗОМБИ КОНЧИЛИСЬ — ПОРАЖЕНИЕ")
-
-func _format_time(t):
-	var total = int(ceil(t))
-	@warning_ignore("integer_division")
-	var minutes = total / 60
-	return "%d:%02d" % [minutes, total % 60]
 
 func _end_game(text):
 	game_over = true

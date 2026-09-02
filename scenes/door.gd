@@ -4,8 +4,8 @@ extends StaticBody2D
 # Пока цела — физически перекрывает вход, зомби бьют по ней.
 # HP кончилось — картинка меняется на сломанную, коллизия выключается, проход открыт.
 
-var max_hp = 60
-var hp = 60
+var max_hp = Config.DOOR_HP
+var hp = Config.DOOR_HP
 var broken = false
 
 # Картинку сломанной двери задаём в инспекторе на узле Door

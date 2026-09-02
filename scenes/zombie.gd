@@ -112,7 +112,7 @@ func _bite(victim):
 # Ближайшая целая дверь вплотную (в неё зомби упёрся по дороге к цели)
 func _blocking_door():
 	var best = null
-	var best_dist = 46.0
+	var best_dist = Config.DOOR_REACH
 	for d in get_tree().get_nodes_in_group("door"):
 		if not is_instance_valid(d):
 			continue
