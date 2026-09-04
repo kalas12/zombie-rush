@@ -1,0 +1,517 @@
+[gd_scene load_steps=30 format=3]
+
+[ext_resource type="Script" uid="uid://c3y2ui0ygbnqv" path="res://scenes/arena.gd" id="1_e05a3"]
+[ext_resource type="PackedScene" uid="uid://rwb48ej6cxwv" path="res://scenes/zombie.tscn" id="1_wl4x5"]
+[ext_resource type="Script" uid="uid://c6y327a81064l" path="res://scenes/human.gd" id="3_olpmc"]
+[ext_resource type="Texture2D" uid="uid://b8jietqc667cs" path="res://assets/units/shooter.png" id="4_xdvfk"]
+[ext_resource type="Texture2D" uid="uid://cqwch2jvvvf43" path="res://assets/units/melee.png" id="5_melee"]
+[ext_resource type="Texture2D" uid="uid://cg2nwmhw5g0pw" path="res://assets/levels/walls-art/wall_h.png" id="6_wallh"]
+[ext_resource type="Texture2D" uid="uid://d3bngwt8xbgjw" path="res://assets/levels/walls-art/wall_v.png" id="7_wallv"]
+[ext_resource type="Texture2D" uid="uid://bletp0whfqmtw" path="res://assets/levels/trees-art/tree_pine.png" id="8_pine"]
+[ext_resource type="Texture2D" uid="uid://ds2e5krltklag" path="res://assets/levels/trees-art/tree_leafy.png" id="9_leafy"]
+[ext_resource type="Texture2D" uid="uid://dctn1otey2xdm" path="res://assets/levels/trees-art/tree_dead.png" id="10_dead"]
+[ext_resource type="Texture2D" uid="uid://cd6ohx88pdcpq" path="res://assets/levels/trees-art/bush.png" id="11_bush"]
+[ext_resource type="Texture2D" uid="uid://5jv6dyaw8qct" path="res://assets/levels/trees-art/rock.png" id="12_rock"]
+[ext_resource type="Script" uid="uid://c6i2cjyloh6ac" path="res://scenes/door.gd" id="13_door"]
+[ext_resource type="Texture2D" uid="uid://bwe3rq5p62bwy" path="res://assets/levels/walls-art/door_closed.png" id="14_doorclosed"]
+[ext_resource type="Texture2D" uid="uid://cjth3napyxr6r" path="res://assets/levels/walls-art/door_broken.png" id="15_doorbroken"]
+[ext_resource type="Texture2D" uid="uid://b257doa8bstg3" path="res://assets/levels/walls-art/window.png" id="16_window"]
+[ext_resource type="Texture2D" uid="uid://bcalnu8efil8e" path="res://assets/levels/ground-art/ground_moss.png" id="17_moss"]
+[ext_resource type="Texture2D" uid="uid://cebhjqfaatjod" path="res://assets/levels/ground-art/ground_needles.png" id="18_needles"]
+[ext_resource type="Texture2D" uid="uid://ckryv1bvu562e" path="res://assets/levels/ground-art/ground_roots.png" id="19_roots"]
+[ext_resource type="Texture2D" uid="uid://8vhth03o1tug" path="res://assets/levels/ground-art/ground_path.png" id="20_path"]
+[ext_resource type="Resource" path="res://resources/humans/shooter.tres" id="21_shooter"]
+[ext_resource type="Resource" path="res://resources/humans/melee.tres" id="22_melee"]
+
+[sub_resource type="NavigationPolygon" id="NavigationPolygon_wl4x5"]
+vertices = PackedVector2Array(741, 719, 1091.02, 1052.09, 40.8828, 1055.9, 591, 719, 1091.97, 34.9688, 741, 369, 36.1094, 34.0234, 391, 369, 391, 719, 541, 645, 465, 645, 465, 443, 667, 443, 667, 645, 591, 645, 541, 719)
+polygons = Array[PackedInt32Array]([PackedInt32Array(0, 1, 2, 3), PackedInt32Array(4, 1, 0, 5), PackedInt32Array(6, 4, 5, 7), PackedInt32Array(2, 6, 7, 8), PackedInt32Array(9, 10, 11, 12), PackedInt32Array(12, 13, 14), PackedInt32Array(9, 12, 14, 15), PackedInt32Array(15, 14, 3), PackedInt32Array(15, 3, 2), PackedInt32Array(2, 8, 15)])
+outlines = Array[PackedVector2Array]([PackedVector2Array(11, 9, 16, 1081, 1116, 1077, 1117, 10)])
+parsed_geometry_type = 1
+source_geometry_mode = 1
+agent_radius = 25.0
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_wl4x5"]
+size = Vector2(22, 22)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_wallh"]
+size = Vector2(300, 24)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_wallseg"]
+size = Vector2(24, 110)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_window"]
+size = Vector2(24, 80)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_wallv"]
+size = Vector2(24, 300)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_walld"]
+size = Vector2(100, 24)
+
+[node name="Arena" type="Node2D"]
+script = ExtResource("1_e05a3")
+zombie_scene = ExtResource("1_wl4x5")
+
+[node name="Floor" type="ColorRect" parent="."]
+offset_left = 12.0
+offset_top = 9.0
+offset_right = 1120.0
+offset_bottom = 1079.0
+mouse_filter = 2
+color = Color(0.203044, 0.266577, 0.177658, 1)
+
+[node name="Ground" type="Node2D" parent="."]
+modulate = Color(1.5, 1.5, 1.45, 1)
+
+[node name="G1" type="Sprite2D" parent="Ground"]
+position = Vector2(78, 75)
+scale = Vector2(0.34, 0.34)
+texture = ExtResource("17_moss")
+
+[node name="G2" type="Sprite2D" parent="Ground"]
+position = Vector2(273, 75)
+rotation = 1.5708
+scale = Vector2(0.34, 0.34)
+texture = ExtResource("18_needles")
+
+[node name="G3" type="Sprite2D" parent="Ground"]
+position = Vector2(468, 75)
+rotation = 3.14159
+scale = Vector2(0.34, 0.34)
+texture = ExtResource("19_roots")
+
+[node name="G4" type="Sprite2D" parent="Ground"]
+position = Vector2(663, 75)
+rotation = 4.71239
+scale = Vector2(0.34, 0.34)
+texture = ExtResource("17_moss")
+
+[node name="G5" type="Sprite2D" parent="Ground"]
+position = Vector2(858, 75)
+scale = Vector2(0.34, 0.34)
+texture = ExtResource("18_needles")
+
+[node name="G6" type="Sprite2D" parent="Ground"]
+position = Vector2(1053, 75)
+rotation = 1.5708
+scale = Vector2(0.34, 0.34)
+texture = ExtResource("19_roots")
+
+[node name="G7" type="Sprite2D" parent="Ground"]
+position = Vector2(78, 270)
+rotation = 3.14159
+scale = Vector2(0.34, 0.34)
+texture = ExtResource("18_needles")
+
+[node name="G8" type="Sprite2D" parent="Ground"]
+position = Vector2(273, 270)
+rotation = 4.71239
+scale = Vector2(0.34, 0.34)
+texture = ExtResource("19_roots")
+
+[node name="G9" type="Sprite2D" parent="Ground"]
+position = Vector2(468, 270)
+scale = Vector2(0.34, 0.34)
+texture = ExtResource("17_moss")
+
+[node name="G10" type="Sprite2D" parent="Ground"]
+position = Vector2(663, 270)
+rotation = 1.5708
+scale = Vector2(0.34, 0.34)
+texture = ExtResource("18_needles")
+
+[node name="G11" type="Sprite2D" parent="Ground"]
+position = Vector2(858, 270)
+rotation = 3.14159
+scale = Vector2(0.34, 0.34)
+texture = ExtResource("19_roots")
+
+[node name="G12" type="Sprite2D" parent="Ground"]
+position = Vector2(1053, 270)
+rotation = 4.71239
+scale = Vector2(0.34, 0.34)
+texture = ExtResource("17_moss")
+
+[node name="G13" type="Sprite2D" parent="Ground"]
+position = Vector2(78, 465)
+scale = Vector2(0.34, 0.34)
+texture = ExtResource("19_roots")
+
+[node name="G14" type="Sprite2D" parent="Ground"]
+position = Vector2(273, 465)
+rotation = 1.5708
+scale = Vector2(0.34, 0.34)
+texture = ExtResource("17_moss")
+
+[node name="G15" type="Sprite2D" parent="Ground"]
+position = Vector2(468, 465)
+rotation = 3.14159
+scale = Vector2(0.34, 0.34)
+texture = ExtResource("18_needles")
+
+[node name="G16" type="Sprite2D" parent="Ground"]
+position = Vector2(663, 465)
+rotation = 4.71239
+scale = Vector2(0.34, 0.34)
+texture = ExtResource("19_roots")
+
+[node name="G17" type="Sprite2D" parent="Ground"]
+position = Vector2(858, 465)
+scale = Vector2(0.34, 0.34)
+texture = ExtResource("17_moss")
+
+[node name="G18" type="Sprite2D" parent="Ground"]
+position = Vector2(1053, 465)
+rotation = 1.5708
+scale = Vector2(0.34, 0.34)
+texture = ExtResource("18_needles")
+
+[node name="G19" type="Sprite2D" parent="Ground"]
+position = Vector2(78, 660)
+rotation = 3.14159
+scale = Vector2(0.34, 0.34)
+texture = ExtResource("17_moss")
+
+[node name="G20" type="Sprite2D" parent="Ground"]
+position = Vector2(273, 660)
+rotation = 4.71239
+scale = Vector2(0.34, 0.34)
+texture = ExtResource("18_needles")
+
+[node name="G21" type="Sprite2D" parent="Ground"]
+position = Vector2(468, 660)
+scale = Vector2(0.34, 0.34)
+texture = ExtResource("19_roots")
+
+[node name="G22" type="Sprite2D" parent="Ground"]
+position = Vector2(663, 660)
+rotation = 1.5708
+scale = Vector2(0.34, 0.34)
+texture = ExtResource("17_moss")
+
+[node name="G23" type="Sprite2D" parent="Ground"]
+position = Vector2(858, 660)
+rotation = 3.14159
+scale = Vector2(0.34, 0.34)
+texture = ExtResource("18_needles")
+
+[node name="G24" type="Sprite2D" parent="Ground"]
+position = Vector2(1053, 660)
+rotation = 4.71239
+scale = Vector2(0.34, 0.34)
+texture = ExtResource("19_roots")
+
+[node name="G25" type="Sprite2D" parent="Ground"]
+position = Vector2(78, 855)
+scale = Vector2(0.34, 0.34)
+texture = ExtResource("18_needles")
+
+[node name="G26" type="Sprite2D" parent="Ground"]
+position = Vector2(273, 855)
+rotation = 1.5708
+scale = Vector2(0.34, 0.34)
+texture = ExtResource("19_roots")
+
+[node name="G27" type="Sprite2D" parent="Ground"]
+position = Vector2(468, 855)
+rotation = 3.14159
+scale = Vector2(0.34, 0.34)
+texture = ExtResource("17_moss")
+
+[node name="G28" type="Sprite2D" parent="Ground"]
+position = Vector2(663, 855)
+rotation = 4.71239
+scale = Vector2(0.34, 0.34)
+texture = ExtResource("18_needles")
+
+[node name="G29" type="Sprite2D" parent="Ground"]
+position = Vector2(858, 855)
+scale = Vector2(0.34, 0.34)
+texture = ExtResource("19_roots")
+
+[node name="G30" type="Sprite2D" parent="Ground"]
+position = Vector2(1053, 855)
+rotation = 1.5708
+scale = Vector2(0.34, 0.34)
+texture = ExtResource("17_moss")
+
+[node name="G31" type="Sprite2D" parent="Ground"]
+position = Vector2(78, 1050)
+rotation = 3.14159
+scale = Vector2(0.34, 0.34)
+texture = ExtResource("19_roots")
+
+[node name="G32" type="Sprite2D" parent="Ground"]
+position = Vector2(273, 1050)
+rotation = 4.71239
+scale = Vector2(0.34, 0.34)
+texture = ExtResource("17_moss")
+
+[node name="G33" type="Sprite2D" parent="Ground"]
+position = Vector2(468, 1050)
+scale = Vector2(0.34, 0.34)
+texture = ExtResource("18_needles")
+
+[node name="G34" type="Sprite2D" parent="Ground"]
+position = Vector2(663, 1050)
+rotation = 1.5708
+scale = Vector2(0.34, 0.34)
+texture = ExtResource("19_roots")
+
+[node name="G35" type="Sprite2D" parent="Ground"]
+position = Vector2(858, 1050)
+rotation = 3.14159
+scale = Vector2(0.34, 0.34)
+texture = ExtResource("17_moss")
+
+[node name="G36" type="Sprite2D" parent="Ground"]
+position = Vector2(1053, 1050)
+rotation = 4.71239
+scale = Vector2(0.34, 0.34)
+texture = ExtResource("18_needles")
+
+[node name="Path1" type="Sprite2D" parent="Ground"]
+position = Vector2(566, 1000)
+scale = Vector2(0.36, 0.36)
+texture = ExtResource("20_path")
+
+[node name="Path2" type="Sprite2D" parent="Ground"]
+position = Vector2(566, 800)
+scale = Vector2(0.36, 0.36)
+texture = ExtResource("20_path")
+
+[node name="HouseFloor" type="ColorRect" parent="."]
+offset_left = 430.0
+offset_top = 408.0
+offset_right = 702.0
+offset_bottom = 680.0
+mouse_filter = 2
+color = Color(0.93, 0.91, 0.85, 1)
+
+[node name="Trees" type="Node2D" parent="."]
+modulate = Color(1.3, 1.3, 1.25, 1)
+
+[node name="T1" type="Sprite2D" parent="Trees"]
+position = Vector2(90, 95)
+scale = Vector2(0.32, 0.32)
+texture = ExtResource("8_pine")
+
+[node name="T2" type="Sprite2D" parent="Trees"]
+position = Vector2(255, 70)
+scale = Vector2(0.3, 0.3)
+texture = ExtResource("11_bush")
+
+[node name="T3" type="Sprite2D" parent="Trees"]
+position = Vector2(70, 330)
+scale = Vector2(0.34, 0.34)
+texture = ExtResource("9_leafy")
+
+[node name="T4" type="Sprite2D" parent="Trees"]
+position = Vector2(110, 620)
+scale = Vector2(0.3, 0.3)
+texture = ExtResource("10_dead")
+
+[node name="T5" type="Sprite2D" parent="Trees"]
+position = Vector2(80, 930)
+scale = Vector2(0.33, 0.33)
+texture = ExtResource("8_pine")
+
+[node name="T6" type="Sprite2D" parent="Trees"]
+position = Vector2(300, 1000)
+scale = Vector2(0.28, 0.28)
+texture = ExtResource("11_bush")
+
+[node name="T7" type="Sprite2D" parent="Trees"]
+position = Vector2(560, 70)
+scale = Vector2(0.3, 0.3)
+texture = ExtResource("12_rock")
+
+[node name="T8" type="Sprite2D" parent="Trees"]
+position = Vector2(870, 60)
+scale = Vector2(0.33, 0.33)
+texture = ExtResource("9_leafy")
+
+[node name="T9" type="Sprite2D" parent="Trees"]
+position = Vector2(1050, 110)
+scale = Vector2(0.32, 0.32)
+texture = ExtResource("8_pine")
+
+[node name="T10" type="Sprite2D" parent="Trees"]
+position = Vector2(1055, 400)
+scale = Vector2(0.34, 0.34)
+texture = ExtResource("9_leafy")
+
+[node name="T11" type="Sprite2D" parent="Trees"]
+position = Vector2(1060, 700)
+scale = Vector2(0.3, 0.3)
+texture = ExtResource("10_dead")
+
+[node name="T12" type="Sprite2D" parent="Trees"]
+position = Vector2(1030, 980)
+scale = Vector2(0.33, 0.33)
+texture = ExtResource("8_pine")
+
+[node name="T13" type="Sprite2D" parent="Trees"]
+position = Vector2(760, 1010)
+scale = Vector2(0.3, 0.3)
+texture = ExtResource("12_rock")
+
+[node name="T14" type="Sprite2D" parent="Trees"]
+position = Vector2(470, 1020)
+scale = Vector2(0.3, 0.3)
+texture = ExtResource("11_bush")
+
+[node name="NavigationRegion2D" type="NavigationRegion2D" parent="."]
+visible = false
+navigation_polygon = SubResource("NavigationPolygon_wl4x5")
+
+[node name="Human" type="CharacterBody2D" parent="." groups=["target"]]
+position = Vector2(505, 455)
+collision_mask = 3
+motion_mode = 1
+script = ExtResource("3_olpmc")
+type = ExtResource("21_shooter")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Human"]
+position = Vector2(1, 3)
+shape = SubResource("RectangleShape2D_wl4x5")
+
+[node name="Sprite2D" type="Sprite2D" parent="Human"]
+scale = Vector2(0.15, 0.15)
+texture = ExtResource("4_xdvfk")
+
+[node name="Human2" type="CharacterBody2D" parent="." groups=["target"]]
+position = Vector2(625, 455)
+collision_mask = 3
+motion_mode = 1
+script = ExtResource("3_olpmc")
+type = ExtResource("21_shooter")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Human2"]
+position = Vector2(1, 3)
+shape = SubResource("RectangleShape2D_wl4x5")
+
+[node name="Sprite2D" type="Sprite2D" parent="Human2"]
+scale = Vector2(0.15, 0.15)
+texture = ExtResource("4_xdvfk")
+
+[node name="Human3" type="CharacterBody2D" parent="." groups=["target"]]
+position = Vector2(505, 605)
+collision_mask = 3
+motion_mode = 1
+script = ExtResource("3_olpmc")
+type = ExtResource("22_melee")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Human3"]
+position = Vector2(1, 3)
+shape = SubResource("RectangleShape2D_wl4x5")
+
+[node name="Sprite2D" type="Sprite2D" parent="Human3"]
+scale = Vector2(0.15, 0.15)
+texture = ExtResource("5_melee")
+
+[node name="Human4" type="CharacterBody2D" parent="." groups=["target"]]
+position = Vector2(625, 605)
+collision_mask = 3
+motion_mode = 1
+script = ExtResource("3_olpmc")
+type = ExtResource("22_melee")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Human4"]
+position = Vector2(1, 3)
+shape = SubResource("RectangleShape2D_wl4x5")
+
+[node name="Sprite2D" type="Sprite2D" parent="Human4"]
+scale = Vector2(0.15, 0.15)
+texture = ExtResource("5_melee")
+
+[node name="HouseWallTop" type="StaticBody2D" parent="." groups=["navigation_polygon_source_geometry_group"]]
+position = Vector2(566, 406)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="HouseWallTop"]
+shape = SubResource("RectangleShape2D_wallh")
+
+[node name="Sprite2D" type="Sprite2D" parent="HouseWallTop"]
+modulate = Color(1.9, 1.75, 1.5, 1)
+scale = Vector2(0.6036, 0.13)
+texture = ExtResource("6_wallh")
+
+[node name="HouseWallLeftUpper" type="StaticBody2D" parent="." groups=["navigation_polygon_source_geometry_group"]]
+position = Vector2(428, 449)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="HouseWallLeftUpper"]
+shape = SubResource("RectangleShape2D_wallseg")
+
+[node name="Sprite2D" type="Sprite2D" parent="HouseWallLeftUpper"]
+modulate = Color(1.9, 1.75, 1.5, 1)
+scale = Vector2(0.11, 0.309)
+texture = ExtResource("7_wallv")
+
+[node name="HouseWallLeftLower" type="StaticBody2D" parent="." groups=["navigation_polygon_source_geometry_group"]]
+position = Vector2(428, 639)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="HouseWallLeftLower"]
+shape = SubResource("RectangleShape2D_wallseg")
+
+[node name="Sprite2D" type="Sprite2D" parent="HouseWallLeftLower"]
+modulate = Color(1.9, 1.75, 1.5, 1)
+scale = Vector2(0.11, 0.309)
+texture = ExtResource("7_wallv")
+
+[node name="Window" type="StaticBody2D" parent="." groups=["navigation_polygon_source_geometry_group"]]
+position = Vector2(428, 544)
+collision_layer = 2
+collision_mask = 0
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Window"]
+shape = SubResource("RectangleShape2D_window")
+
+[node name="Sprite2D" type="Sprite2D" parent="Window"]
+scale = Vector2(0.098, 0.294)
+texture = ExtResource("16_window")
+
+[node name="HouseWallRight" type="StaticBody2D" parent="." groups=["navigation_polygon_source_geometry_group"]]
+position = Vector2(704, 544)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="HouseWallRight"]
+shape = SubResource("RectangleShape2D_wallv")
+
+[node name="Sprite2D" type="Sprite2D" parent="HouseWallRight"]
+modulate = Color(1.9, 1.75, 1.5, 1)
+scale = Vector2(0.11, 0.8427)
+texture = ExtResource("7_wallv")
+
+[node name="HouseWallBottomLeft" type="StaticBody2D" parent="." groups=["navigation_polygon_source_geometry_group"]]
+position = Vector2(466, 682)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="HouseWallBottomLeft"]
+shape = SubResource("RectangleShape2D_walld")
+
+[node name="Sprite2D" type="Sprite2D" parent="HouseWallBottomLeft"]
+modulate = Color(1.9, 1.75, 1.5, 1)
+scale = Vector2(0.2012, 0.13)
+texture = ExtResource("6_wallh")
+
+[node name="HouseWallBottomRight" type="StaticBody2D" parent="." groups=["navigation_polygon_source_geometry_group"]]
+position = Vector2(666, 682)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="HouseWallBottomRight"]
+shape = SubResource("RectangleShape2D_walld")
+
+[node name="Sprite2D" type="Sprite2D" parent="HouseWallBottomRight"]
+modulate = Color(1.9, 1.75, 1.5, 1)
+scale = Vector2(0.2012, 0.13)
+texture = ExtResource("6_wallh")
+
+[node name="Door" type="StaticBody2D" parent="."]
+position = Vector2(566, 682)
+script = ExtResource("13_door")
+texture_broken = ExtResource("15_doorbroken")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Door"]
+shape = SubResource("RectangleShape2D_walld")
+
+[node name="Sprite2D" type="Sprite2D" parent="Door"]
+scale = Vector2(0.459, 0.079)
+texture = ExtResource("14_doorclosed")

@@ -11,6 +11,7 @@ var selected_index := -1      # какой тип выбран сейчас (-1 
 
 # --- Состояние боя ---
 var game_over = false
+var battle_won = false
 var humans_seen = false  # видели ли хоть раз живого человека (защита от мгновенной победы)
 
 var no_spawn_radius = Config.NO_SPAWN_RADIUS # ближе этого к защитникам спавнить нельзя
@@ -85,6 +86,14 @@ func _build_hud():
 
 	# Панель выбора типа зомби — прижата к низу экрана
 	var vp = get_viewport().get_visible_rect().size
+
+	# Дев-кнопка: мгновенная победа (для прогона кампании без игры в бой)
+	var skip = Button.new()
+	skip.text = "Скип → победа"
+	skip.add_theme_font_size_override("font_size", 14)
+	skip.position = Vector2(vp.x - 150, 14)
+	skip.pressed.connect(_skip_battle)
+	layer.add_child(skip)
 	var bg := ButtonGroup.new()   # радио-режим: выбран всегда один
 	var btn_w := 96
 	var btn_h := 104
@@ -142,9 +151,30 @@ func _process(delta):
 
 func _end_game(text):
 	game_over = true
-	result_label.text = text + "\n(R — заново)"
+	battle_won = text == "ПОБЕДА"
+	var hint := "\n(R — заново"
+	if GameState.pending_node != "":   # бой запущен с карты леса
+		hint += "   ·   M — на карту"
+	result_label.text = text + hint + ")"
 	result_label.visible = true
 	get_tree().paused = true
+
+# Дев: мгновенно закончить бой победой
+func _skip_battle():
+	if game_over:
+		return
+	_end_game("ПОБЕДА")
+	if GameState.pending_node != "":
+		_return_to_map()
+
+# Вернуться на карту леса (только если бой запущен оттуда)
+func _return_to_map():
+	if battle_won:
+		GameState.go_to(GameState.pending_node)   # засчитываем узел пройденным
+	GameState.pending_node = ""
+	GameState.pending_type = ""
+	get_tree().paused = false
+	get_tree().change_scene_to_file("res://scenes/forest_map.tscn")
 
 func _on_type_pressed(i):
 	selected_index = i
@@ -175,11 +205,14 @@ func _show_hint(text):
 	hint_timer = 1.2
 
 func _unhandled_input(event):
-	# Перезапуск боя после его конца
+	# После конца боя: R — заново, M — назад на карту (если пришли с карты)
 	if game_over:
-		if event is InputEventKey and event.pressed and event.keycode == KEY_R:
-			get_tree().paused = false
-			get_tree().reload_current_scene()
+		if event is InputEventKey and event.pressed:
+			if event.keycode == KEY_R:
+				get_tree().paused = false
+				get_tree().reload_current_scene()
+			elif event.keycode == KEY_M and GameState.pending_node != "":
+				_return_to_map()
 		return
 
 	# Левая кнопка мыши по карте — спавн выбранной группы

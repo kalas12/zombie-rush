@@ -1,0 +1,58 @@
+[gd_scene load_steps=3 format=3 uid="uid://bjjdce4iq0h2p"]
+
+[ext_resource type="Script" uid="uid://b0f5kgnrsqmwc" path="res://scenes/forest_map.gd" id="1_map"]
+[ext_resource type="Texture2D" uid="uid://bytxg2c810rwf" path="res://assets/levels/forest_map_bg.png" id="2_bg"]
+
+[node name="ForestMap" type="Node2D"]
+script = ExtResource("1_map")
+
+[node name="Background" type="Sprite2D" parent="."]
+show_behind_parent = true
+texture = ExtResource("2_bg")
+
+[node name="Camera2D" type="Camera2D" parent="."]
+zoom = Vector2(0.38, 0.38)
+
+[node name="Nodes" type="Node2D" parent="."]
+
+[node name="n0" type="Marker2D" parent="Nodes"]
+position = Vector2(-5, 728)
+
+[node name="n1" type="Marker2D" parent="Nodes"]
+position = Vector2(-144, 381)
+
+[node name="n2" type="Marker2D" parent="Nodes"]
+position = Vector2(119, 380)
+
+[node name="n3" type="Marker2D" parent="Nodes"]
+position = Vector2(-278, 134)
+
+[node name="n4" type="Marker2D" parent="Nodes"]
+position = Vector2(-7, 132)
+
+[node name="n5" type="Marker2D" parent="Nodes"]
+position = Vector2(274, 137)
+
+[node name="n6" type="Marker2D" parent="Nodes"]
+position = Vector2(-131, -113)
+
+[node name="n7" type="Marker2D" parent="Nodes"]
+position = Vector2(144, -109)
+
+[node name="n8" type="Marker2D" parent="Nodes"]
+position = Vector2(-260, -318)
+
+[node name="n9" type="Marker2D" parent="Nodes"]
+position = Vector2(-11, -312)
+
+[node name="n10" type="Marker2D" parent="Nodes"]
+position = Vector2(252, -319)
+
+[node name="n11" type="Marker2D" parent="Nodes"]
+position = Vector2(-168, -523)
+
+[node name="n12" type="Marker2D" parent="Nodes"]
+position = Vector2(144, -518)
+
+[node name="n13" type="Marker2D" parent="Nodes"]
+position = Vector2(1, -669)
