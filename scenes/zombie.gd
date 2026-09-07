@@ -1,61 +1,59 @@
 extends CharacterBody2D
 
-signal died
+signal died(army_id)
 
 const Fx = preload("res://scenes/fx.gd")
-const DEFAULT_TYPE := preload("res://resources/zombies/basic.tres")
 
-# Тип задаётся при спавне (arena.gd: z.type = ...). Все статы — из него.
-var type: ZombieType
+# arena.gd заполняет ДО add_child: { "id", "type", "hp" } из GameState.army.
+# Если пусто — обычный зомби с полным HP.
+var setup_data: Dictionary = {}
 
-# --- Статы (заполняются в _ready() из type) ---
-var max_hp := 0
-var hp := 0
-var speed := 0.0
-var bite_damage := 0
+# --- Статы (из setup_data / GameState.ZTYPE в _ready) ---
+var army_id := -1
+var ztype := "normal"
+var max_hp := 30
+var hp := 30
+var speed := 90.0
+var bite_damage := 8
 var bite_cooldown := 0.7
 var attack_radius := 32.0
 
 var target = null
-var bite_timer = 0.0         # сколько секунд осталось до следующего укуса
-var retarget_timer = 0.0     # когда снова пере-выбрать цель
+var bite_timer = 0.0
+var retarget_timer = 0.0
 var retarget_interval = Config.ZOMBIE_RETARGET_INTERVAL
 
 @onready var agent: NavigationAgent2D = $NavigationAgent2D
 @onready var sprite: Sprite2D = $Sprite2D
 
 func _ready():
-	# Применяем данные типа (если не задан — базовый)
-	if type == null:
-		type = DEFAULT_TYPE
-	max_hp = type.max_hp
-	hp = type.max_hp
-	speed = type.speed
-	bite_damage = type.bite_damage
-	bite_cooldown = type.bite_cooldown
-	attack_radius = type.attack_radius
-	if type.texture != null:
-		sprite.texture = type.texture
-
-	# Чтобы люди могли находить зомби через get_nodes_in_group("zombie")
+	_apply_setup()
 	add_to_group("zombie")
-
-	# Ждём кадр физики: навигации нужен кадр на инициализацию, иначе путь пустой
+	# Навигации нужен кадр на инициализацию, иначе путь пустой
 	await get_tree().physics_frame
-
 	pick_target()
 
+func _apply_setup():
+	army_id = setup_data.get("id", -1)
+	ztype = setup_data.get("type", "normal")
+	var t: Dictionary = GameState.ZTYPE.get(ztype, GameState.ZTYPE["normal"])
+	max_hp = t.max_hp
+	hp = setup_data.get("hp", t.max_hp)   # текущее HP из армии — раненый входит раненым
+	speed = t.speed
+	bite_damage = t.bite_damage
+	bite_cooldown = t.bite_cooldown
+	var path: String = t.get("texture", "")
+	if path != "" and ResourceLoader.exists(path):
+		sprite.texture = load(path)
+
 func _physics_process(delta):
-	# Кулдаун укуса тикает всегда
 	if bite_timer > 0.0:
 		bite_timer -= delta
 
-	# Периодически (и сразу, если цель пропала) выбираем ближайшего защитника
 	retarget_timer -= delta
 	if retarget_timer <= 0.0 or target == null or not is_instance_valid(target):
 		pick_target()
 
-	# Защитников не осталось — стоим
 	if target == null:
 		velocity = Vector2.ZERO
 		move_and_slide()
@@ -63,14 +61,14 @@ func _physics_process(delta):
 
 	var dist = global_position.distance_to(target.global_position)
 
-	# --- Дошли до цели: стоим и кусаем, внутрь не лезем ---
+	# Дошли до цели — стоим и кусаем
 	if dist <= attack_radius:
 		velocity = Vector2.ZERO
 		move_and_slide()
 		_bite(target)
 		return
 
-	# --- Закрытая дверь прямо перед носом: ломаем её ---
+	# Закрытая дверь на пути — ломаем
 	var door = _blocking_door()
 	if door != null:
 		velocity = Vector2.ZERO
@@ -78,13 +76,12 @@ func _physics_process(delta):
 		_bite(door)
 		return
 
-	# --- Ещё далеко: идём по навигации в обход стен ---
+	# Идём по навигации в обход стен
 	var next_point = agent.get_next_path_position()
 	var direction = (next_point - global_position).normalized()
 	velocity = direction * speed
 	move_and_slide()
 
-# Кусаем цель, если кулдаун прошёл
 # Выбрать ближайшего живого защитника и направить к нему навигацию
 func pick_target():
 	retarget_timer = retarget_interval
@@ -109,7 +106,7 @@ func _bite(victim):
 		victim.take_damage(bite_damage)
 		Fx.burst(get_parent(), victim.global_position, Color(0.55, 0.06, 0.06), 6, 70.0, 0.22)
 
-# Ближайшая целая дверь вплотную (в неё зомби упёрся по дороге к цели)
+# Ближайшая целая дверь вплотную
 func _blocking_door():
 	var best = null
 	var best_dist = Config.DOOR_REACH
@@ -122,19 +119,18 @@ func _blocking_door():
 			best = d
 	return best
 
-# Зомби получает урон (позже — от пуль людей)
 func take_damage(amount):
 	hp -= amount
-	queue_redraw()   # перерисовать полоску HP
+	queue_redraw()
 	if hp <= 0:
 		die()
 
 func die():
-	died.emit()
+	died.emit(army_id)
 	Fx.burst(get_parent(), global_position, Color(0.42, 0.77, 0.25), 14, 140.0, 0.4)
 	queue_free()
 
-# Полоска HP над зомби — показываем только когда есть повреждения (из «02»)
+# Полоска HP над зомби — только при повреждении
 func _draw():
 	if hp >= max_hp:
 		return
@@ -143,9 +139,9 @@ func _draw():
 	var y = -30.0
 	var frac = clamp(float(hp) / float(max_hp), 0.0, 1.0)
 	draw_rect(Rect2(-w / 2.0, y, w, h), Color(0, 0, 0, 0.6))
-	var col = Color("6ee06e")          # полное
+	var col = Color("6ee06e")
 	if frac < 0.3:
-		col = Color("ff5a5a")          # низкое
+		col = Color("ff5a5a")
 	elif frac < 0.6:
-		col = Color("ffd24a")          # среднее
+		col = Color("ffd24a")
 	draw_rect(Rect2(-w / 2.0, y, w * frac, h), col)

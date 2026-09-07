@@ -82,6 +82,12 @@ func _build_hud() -> void:
 	_biomass_label.add_theme_constant_override("outline_size", 4)
 	cl.add_child(_biomass_label)
 
+	var squads_btn := Button.new()
+	squads_btn.text = "Отряды"
+	squads_btn.position = Vector2(16, 44)
+	squads_btn.pressed.connect(func(): get_tree().change_scene_to_file("res://scenes/squads.tscn"))
+	cl.add_child(squads_btn)
+
 func _process(_delta: float) -> void:
 	if Engine.is_editor_hint():
 		if _by_id.is_empty():

@@ -1,68 +1,92 @@
 extends Node2D
 
-# Ссылка на сцену зомби, которую будем клонировать
+# Сцена боя. Используется как arena.tscn (тест, F5) и battle_a/b.tscn (узлы карты).
+# Панель = отряды из GameState.squads. Отряд выставляется целиком, один раз.
+# После боя: павшие вычёркиваются из армии, выжившие сохраняют раны.
+
 @export var zombie_scene: PackedScene
 
-# Типы зомби (из .tres) и запас пачек по каждому
-var zombie_types := []       # Array[ZombieType]
-var packs_left := []          # сколько пачек осталось, параллельно zombie_types
-var type_buttons := []        # кнопки панели, параллельно zombie_types
-var selected_index := -1      # какой тип выбран сейчас (-1 = ничего)
+# --- Отряды этого боя ---
+var battle_squads := []        # [{ members: [army_dict...], used: bool }]
+var squad_buttons := []        # параллельно battle_squads
+var selected_squad := -1
 
 # --- Состояние боя ---
 var game_over = false
 var battle_won = false
-var humans_seen = false  # видели ли хоть раз живого человека (защита от мгновенной победы)
+var humans_seen = false
 
-var no_spawn_radius = Config.NO_SPAWN_RADIUS # ближе этого к защитникам спавнить нельзя
+var no_spawn_radius = Config.NO_SPAWN_RADIUS
 
-# Счётчики ведём по сигналам, а не опросом групп каждый кадр
 var zombies_alive = 0
 var humans_alive = 0
+var defenders_killed = 0       # убитые (не сбежавшие) — для награды биомассой
+var last_reward = 0
 
-# HUD создаём из кода, узлы в сцену добавлять не нужно
+# трекинг результатов боя
+var _spawned := []             # [{ node, army_id }]
+var casualties := []           # army_id павших
+
+# HUD
 var info_label
 var result_label
 var hint_label
 var hint_timer = 0.0
+var _retry_btn
 
 func _ready():
-	# Чтобы менеджер боя реагировал на перезапуск даже при paused
 	process_mode = Node.PROCESS_MODE_ALWAYS
-	zombie_types = _load_zombie_types()
-	for t in zombie_types:
-		packs_left.append(t.packs)
+	battle_squads = _build_battle_squads()
 	_build_hud()
 	_register_defenders()
 
-# Собираем все типы зомби из resources/zombies/ — новый .tres появится сам
-func _load_zombie_types() -> Array:
+# Отряды для боя из GameState.squads. Ничего не сформировано → авто-разбивка армии;
+# армии нет (одиночный F5) → тестовый отряд из 4 обычных.
+func _build_battle_squads() -> Array:
 	var out := []
-	var dir := DirAccess.open("res://resources/zombies")
-	if dir != null:
-		for f in dir.get_files():
-			if f.ends_with(".tres"):
-				var res = load("res://resources/zombies/%s" % f)
-				if res is ZombieType:
-					out.append(res)
-	out.sort_custom(func(a, b): return a.cost < b.cost)  # дешёвые слева
-	if out.is_empty():
-		out.append(load("res://resources/zombies/basic.tres"))
+	for s in GameState.squads:
+		var members := []
+		for zid in s:
+			var z = GameState.zombie_by_id(zid)
+			if not z.is_empty():
+				members.append(z)
+		if not members.is_empty():
+			out.append({ "members": members, "used": false })
+	if not out.is_empty():
+		return out
+
+	var pool: Array = GameState.army.duplicate()
+	if pool.is_empty():
+		for i in 4:
+			pool.append({ "id": -1, "type": "normal", "hp": 30 })
+	var cur := []
+	for z in pool:
+		cur.append(z)
+		if cur.size() >= 5:
+			out.append({ "members": cur, "used": false })
+			cur = []
+	if not cur.is_empty():
+		out.append({ "members": cur, "used": false })
 	return out
 
-# Считаем защитников на старте и слушаем их сигналы died / fled
 func _register_defenders():
 	for h in get_tree().get_nodes_in_group("target"):
 		humans_alive += 1
-		h.died.connect(_on_defender_gone)
-		h.fled.connect(_on_defender_gone)
+		h.died.connect(_on_defender_killed)
+		h.fled.connect(_on_defender_fled)
 	humans_seen = humans_alive > 0
 
-func _on_zombie_died():
-	zombies_alive -= 1
-
-func _on_defender_gone():
+func _on_defender_killed():
 	humans_alive -= 1
+	defenders_killed += 1
+
+func _on_defender_fled():
+	humans_alive -= 1
+
+func _on_zombie_died(aid):
+	zombies_alive -= 1
+	if aid >= 0:
+		casualties.append(aid)
 
 func _build_hud():
 	var layer = CanvasLayer.new()
@@ -78,52 +102,57 @@ func _build_hud():
 	hint_label.visible = false
 	layer.add_child(hint_label)
 
-	result_label = _make_label(64, Color("ff8a3d"))
+	result_label = _make_label(48, Color("ff8a3d"))
 	result_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	result_label.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
 	result_label.visible = false
 	layer.add_child(result_label)
 
-	# Панель выбора типа зомби — прижата к низу экрана
+	# Кнопка "Заново" — только для одиночного боя (F5). В кампании конец боя ведёт
+	# на экран награды / поражения.
+	_retry_btn = Button.new()
+	_retry_btn.text = "Заново"
+	_retry_btn.add_theme_font_size_override("font_size", 20)
+	_retry_btn.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
+	_retry_btn.position += Vector2(-40, 70)
+	_retry_btn.visible = false
+	_retry_btn.pressed.connect(func():
+		get_tree().paused = false
+		get_tree().reload_current_scene())
+	layer.add_child(_retry_btn)
+
 	var vp = get_viewport().get_visible_rect().size
 
-	# Дев-кнопка: мгновенная победа (для прогона кампании без игры в бой)
 	var skip = Button.new()
 	skip.text = "Скип → победа"
 	skip.add_theme_font_size_override("font_size", 14)
 	skip.position = Vector2(vp.x - 150, 14)
 	skip.pressed.connect(_skip_battle)
 	layer.add_child(skip)
-	var bg := ButtonGroup.new()   # радио-режим: выбран всегда один
-	var btn_w := 96
-	var btn_h := 104
-	for i in zombie_types.size():
-		var t = zombie_types[i]
+
+	# Панель отрядов снизу
+	var bg := ButtonGroup.new()
+	var btn_w := 128
+	var btn_h := 64
+	for i in battle_squads.size():
 		var b = Button.new()
 		b.toggle_mode = true
 		b.button_group = bg
 		b.custom_minimum_size = Vector2(btn_w, btn_h)
-		b.icon = t.texture
-		b.add_theme_constant_override("icon_max_width", 46)
-		b.add_theme_font_size_override("font_size", 12)
-		b.vertical_icon_alignment = VERTICAL_ALIGNMENT_TOP
-		b.alignment = HORIZONTAL_ALIGNMENT_CENTER
-		b.position = Vector2(12 + i * (btn_w + 6), vp.y - btn_h - 8)
-		b.pressed.connect(_on_type_pressed.bind(i))
+		b.add_theme_font_size_override("font_size", 14)
+		b.position = Vector2(12 + i * (btn_w + 6), vp.y - btn_h - 10)
+		b.pressed.connect(_select_squad.bind(i))
 		layer.add_child(b)
-		type_buttons.append(b)
-	_refresh_type_buttons()
-
-	# Первый тип выбран по умолчанию
-	if not type_buttons.is_empty():
-		type_buttons[0].button_pressed = true
-		_on_type_pressed(0)
+		squad_buttons.append(b)
+	_refresh_squad_buttons()
+	if not squad_buttons.is_empty():
+		squad_buttons[0].button_pressed = true
+		_select_squad(0)
 
 func _make_label(size, color):
 	var l = Label.new()
 	l.add_theme_font_size_override("font_size", size)
 	l.add_theme_color_override("font_color", color)
-	# Чёрный контур — читается на любом фоне
 	l.add_theme_color_override("font_outline_color", Color.BLACK)
 	l.add_theme_constant_override("outline_size", 4)
 	return l
@@ -132,72 +161,96 @@ func _process(delta):
 	if game_over:
 		return
 
-	# Гасим подсказку
 	if hint_timer > 0.0:
 		hint_timer -= delta
 		if hint_timer <= 0.0:
 			hint_label.visible = false
 
-	info_label.text = "Зомби на карте: %d    Людей живо: %d" % [zombies_alive, humans_alive]
+	var left := _squads_left()
+	info_label.text = "Зомби на карте: %d    Отрядов в запасе: %d    Людей живо: %d" % [zombies_alive, left, humans_alive]
 
-	# Победа: всех защитников убили или разогнали
 	if humans_seen and humans_alive <= 0:
 		_end_game("ПОБЕДА")
 		return
 
-	# Поражение: пачки всех типов кончились и на карте пусто (таймера-рассвета больше нет)
-	if _all_packs_empty() and zombies_alive <= 0:
-		_end_game("ЗОМБИ КОНЧИЛИСЬ — ПОРАЖЕНИЕ")
+	if left <= 0 and zombies_alive <= 0:
+		_end_game("ОРДА РАЗБИТА — ПОРАЖЕНИЕ")
+
+func _squads_left() -> int:
+	var n := 0
+	for s in battle_squads:
+		if not s.used:
+			n += 1
+	return n
 
 func _end_game(text):
+	if game_over:
+		return
 	game_over = true
 	battle_won = text == "ПОБЕДА"
-	var hint := "\n(R — заново"
-	if GameState.pending_node != "":   # бой запущен с карты леса
-		hint += "   ·   M — на карту"
-	result_label.text = text + hint + ")"
+
+	if battle_won:
+		last_reward = Config.BIO_WIN_BASE + Config.BIO_PER_KILL * defenders_killed
+		GameState.biomass += last_reward
+
+	# Бой из кампании → сразу на нужный экран
+	if GameState.pending_node != "":
+		if battle_won:
+			_apply_battle_results()
+			GameState.last_corpses = defenders_killed
+			GameState.last_reward = last_reward
+			get_tree().change_scene_to_file("res://scenes/reward.tscn")
+		else:
+			get_tree().change_scene_to_file("res://scenes/defeat.tscn")
+		return
+
+	# Одиночный бой (F5) — оверлей + кнопка "Заново"
+	result_label.text = text
 	result_label.visible = true
+	_retry_btn.visible = true
 	get_tree().paused = true
 
-# Дев: мгновенно закончить бой победой
+# Дев: мгновенная победа. В кампании — сразу на карту (без экрана награды).
 func _skip_battle():
 	if game_over:
 		return
-	_end_game("ПОБЕДА")
+	game_over = true
+	battle_won = true
 	if GameState.pending_node != "":
-		_return_to_map()
+		_apply_battle_results()
+		GameState.biomass += Config.BIO_WIN_BASE
+		GameState.go_to(GameState.pending_node)
+		GameState.pending_node = ""
+		GameState.pending_type = ""
+		get_tree().change_scene_to_file("res://scenes/forest_map.tscn")
+	else:
+		result_label.text = "ПОБЕДА (скип)"
+		result_label.visible = true
+		_retry_btn.visible = true
+		get_tree().paused = true
 
-# Вернуться на карту леса (только если бой запущен оттуда)
-func _return_to_map():
-	if battle_won:
-		GameState.go_to(GameState.pending_node)   # засчитываем узел пройденным
-	GameState.pending_node = ""
-	GameState.pending_type = ""
-	get_tree().paused = false
-	get_tree().change_scene_to_file("res://scenes/forest_map.tscn")
+# Павших → из армии; выживших → текущее HP; отряды переформируем перед след. боем.
+func _apply_battle_results():
+	for aid in casualties:
+		GameState.remove_zombie(aid)
+	for e in _spawned:
+		if is_instance_valid(e.node) and e.army_id >= 0:
+			var z = GameState.zombie_by_id(e.army_id)
+			if not z.is_empty():
+				z.hp = maxi(int(e.node.hp), 1)
+	GameState.clear_squads()
 
-func _on_type_pressed(i):
-	selected_index = i
+func _select_squad(i):
+	selected_squad = i
 
-# Текст кнопок = "Имя\nостаток пачек"; пустые — выключаем; выбор уводим на непустую
-func _refresh_type_buttons():
-	for i in type_buttons.size():
-		type_buttons[i].text = "%s\n%d" % [zombie_types[i].display_name, packs_left[i]]
-		type_buttons[i].disabled = packs_left[i] <= 0
-
-	if selected_index >= 0 and packs_left[selected_index] <= 0:
-		selected_index = -1
-		for i in packs_left.size():
-			if packs_left[i] > 0:
-				selected_index = i
-				type_buttons[i].button_pressed = true
-				break
-
-func _all_packs_empty() -> bool:
-	for n in packs_left:
-		if n > 0:
-			return false
-	return true
+func _refresh_squad_buttons():
+	for i in squad_buttons.size():
+		var s = battle_squads[i]
+		if s.used:
+			squad_buttons[i].text = "Отряд %d\n(в бою)" % (i + 1)
+			squad_buttons[i].disabled = true
+		else:
+			squad_buttons[i].text = "Отряд %d\n%d зомби" % [i + 1, s.members.size()]
 
 func _show_hint(text):
 	hint_label.text = text
@@ -205,36 +258,36 @@ func _show_hint(text):
 	hint_timer = 1.2
 
 func _unhandled_input(event):
-	# После конца боя: R — заново, M — назад на карту (если пришли с карты)
 	if game_over:
-		if event is InputEventKey and event.pressed:
-			if event.keycode == KEY_R:
-				get_tree().paused = false
-				get_tree().reload_current_scene()
-			elif event.keycode == KEY_M and GameState.pending_node != "":
-				_return_to_map()
 		return
 
-	# Левая кнопка мыши по карте — спавн выбранной группы
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
-		try_spawn_group(get_global_mouse_position())
+		try_deploy_squad(get_global_mouse_position())
 
-func try_spawn_group(pos):
-	if selected_index < 0:
-		_show_hint("Сначала выбери тип зомби снизу")
+func try_deploy_squad(pos):
+	if selected_squad < 0 or selected_squad >= battle_squads.size():
+		_show_hint("Выбери отряд снизу")
 		return
-	if packs_left[selected_index] <= 0:
-		_show_hint("Пачки этого типа кончились")
+	var s = battle_squads[selected_squad]
+	if s.used:
+		_show_hint("Этот отряд уже выставлен")
 		return
 	if _too_close_to_defenders(pos):
 		_show_hint("Слишком близко к дому")
 		return
 
-	var t = zombie_types[selected_index]
-	packs_left[selected_index] -= 1
-	for i in t.pack_size:
-		_spawn_one(pos + Vector2(randf_range(-24, 24), randf_range(-24, 24)))
-	_refresh_type_buttons()
+	s.used = true
+	for m in s.members:
+		_spawn_zombie(m, pos + Vector2(randf_range(-30, 30), randf_range(-30, 30)))
+	_refresh_squad_buttons()
+
+	# перевести выбор на следующий неиспользованный отряд
+	for i in battle_squads.size():
+		if not battle_squads[i].used:
+			squad_buttons[i].button_pressed = true
+			_select_squad(i)
+			return
+	selected_squad = -1
 
 func _too_close_to_defenders(pos):
 	for t in get_tree().get_nodes_in_group("target"):
@@ -242,10 +295,15 @@ func _too_close_to_defenders(pos):
 			return true
 	return false
 
-func _spawn_one(pos):
+func _spawn_zombie(member: Dictionary, pos: Vector2):
 	var z = zombie_scene.instantiate()
-	z.type = zombie_types[selected_index]
+	z.setup_data = {
+		"id": member.get("id", -1),
+		"type": member.get("type", "normal"),
+		"hp": member.get("hp", 30),
+	}
 	z.global_position = pos
 	z.died.connect(_on_zombie_died)
 	add_child(z)
 	zombies_alive += 1
+	_spawned.append({ "node": z, "army_id": member.get("id", -1) })
