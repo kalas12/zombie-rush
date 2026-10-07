@@ -59,10 +59,11 @@ func _build_battle_squads() -> Array:
 	if pool.is_empty():
 		for i in 4:
 			pool.append({ "id": -1, "type": "normal", "hp": 30 })
+	var cap := GameState.squad_cap()
 	var cur := []
 	for z in pool:
 		cur.append(z)
-		if cur.size() >= 5:
+		if cur.size() >= cap:
 			out.append({ "members": cur, "used": false })
 			cur = []
 	if not cur.is_empty():
@@ -190,7 +191,8 @@ func _end_game(text):
 	battle_won = text == "ПОБЕДА"
 
 	if battle_won:
-		last_reward = Config.BIO_WIN_BASE + Config.BIO_PER_KILL * defenders_killed
+		var raw: int = Config.BIO_WIN_BASE + Config.BIO_PER_KILL * defenders_killed
+		last_reward = int(round(raw * GameState.biomass_mult()))   # талант «Пожиратели»
 		GameState.biomass += last_reward
 
 	# Бой из кампании → сразу на нужный экран

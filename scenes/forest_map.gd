@@ -65,7 +65,9 @@ func _ready() -> void:
 		queue_redraw()
 		return
 	if GameState.current_node == "":
-		GameState.start_run("n0")
+		# новый забег — сперва экран набора стартовой армии
+		get_tree().change_scene_to_file("res://scenes/start_army.tscn")
+		return
 	if _cam != null:
 		_cam.zoom = Vector2(START_ZOOM, START_ZOOM)
 	_build_hud()
@@ -87,6 +89,12 @@ func _build_hud() -> void:
 	squads_btn.position = Vector2(16, 44)
 	squads_btn.pressed.connect(func(): get_tree().change_scene_to_file("res://scenes/squads.tscn"))
 	cl.add_child(squads_btn)
+
+	var talents_btn := Button.new()
+	talents_btn.text = "Таланты"
+	talents_btn.position = Vector2(16, 78)
+	talents_btn.pressed.connect(func(): get_tree().change_scene_to_file("res://scenes/talents.tscn"))
+	cl.add_child(talents_btn)
 
 func _process(_delta: float) -> void:
 	if Engine.is_editor_hint():

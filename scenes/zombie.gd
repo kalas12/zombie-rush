@@ -37,10 +37,11 @@ func _apply_setup():
 	army_id = setup_data.get("id", -1)
 	ztype = setup_data.get("type", "normal")
 	var t: Dictionary = GameState.ZTYPE.get(ztype, GameState.ZTYPE["normal"])
-	max_hp = t.max_hp
-	hp = setup_data.get("hp", t.max_hp)   # текущее HP из армии — раненый входит раненым
-	speed = t.speed
-	bite_damage = t.bite_damage
+	# базовый стат + прибавка от талантов ветки этого типа
+	max_hp = int(t.max_hp) + GameState.talent_stat_add(ztype, "max_hp")
+	hp = mini(int(setup_data.get("hp", max_hp)), max_hp)  # текущее HP из армии, не выше нового максимума
+	speed = float(t.speed) + GameState.talent_stat_add(ztype, "speed")
+	bite_damage = int(t.bite_damage) + GameState.talent_stat_add(ztype, "bite_damage")
 	bite_cooldown = t.bite_cooldown
 	var path: String = t.get("texture", "")
 	if path != "" and ResourceLoader.exists(path):
@@ -103,7 +104,10 @@ func _bite(victim):
 		return
 	bite_timer = bite_cooldown
 	if victim != null and victim.has_method("take_damage"):
-		victim.take_damage(bite_damage)
+		var dmg := bite_damage
+		if victim.is_in_group("door"):
+			dmg = int(dmg * GameState.door_mult(ztype))   # талант «Таран» у толстяков
+		victim.take_damage(dmg)
 		Fx.burst(get_parent(), victim.global_position, Color(0.55, 0.06, 0.06), 6, 70.0, 0.22)
 
 # Ближайшая целая дверь вплотную

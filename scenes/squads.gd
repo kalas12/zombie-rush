@@ -87,7 +87,7 @@ func _refresh() -> void:
 
 		var hdr := Button.new()
 		hdr.text = "Отряд %d   —   вес %d / %d%s" % [
-			i + 1, GameState.squad_weight(i), GameState.SQUAD_CAP,
+			i + 1, GameState.squad_weight(i), GameState.squad_cap(),
 			"   ◄ выбран" if i == _selected_squad else ""
 		]
 		hdr.alignment = HORIZONTAL_ALIGNMENT_LEFT
@@ -157,8 +157,9 @@ func _autofill_if_empty() -> void:
 	if GameState.deployed_count() > 0:
 		return
 	var idx := 0
+	var limit := GameState.squad_limit()
 	for z in GameState.army:
-		while idx < GameState.MAX_SQUADS and not GameState.add_to_squad(z.id, idx):
+		while idx < limit and not GameState.add_to_squad(z.id, idx):
 			idx += 1
-		if idx >= GameState.MAX_SQUADS:
+		if idx >= limit:
 			break

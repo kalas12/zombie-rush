@@ -5,6 +5,8 @@ extends Node
 # Регистрация: Project Settings → вкладка Globals → Autoload →
 #   Path: res://scripts/autoload/game_state.gd, Node Name: GameState, Add.
 
+const TalentDB = preload("res://scripts/data/talents.gd")
+
 # --- Карта / прогресс (Фаза 2) ---
 var current_node := ""              # id узла, где игрок сейчас ("" = забег не начат)
 var passed: Array[String] = []      # id пройденных узлов
@@ -28,28 +30,43 @@ var army: Array[Dictionary] = []
 var _next_zid := 0                             # счётчик уникальных id зомби
 
 # --- Отряды (Фаза 3, Шаг 2) ---
-# squads[i] = массив id зомби. До 5 отрядов, вместимость по весу = 5 на отряд.
+# squads[i] = массив id зомби. Базово 5 отрядов, вместимость по весу = 5;
+# таланты g_squad / g_slot их увеличивают — см. squad_limit() / squad_cap().
 const MAX_SQUADS := 5
 const SQUAD_CAP := 5
 
+# Бюджет веса на набор стартовой армии (Фаза 3, Шаг 4)
+const START_WEIGHT := 6
+
 var squads: Array = []
+
+# --- Таланты (Фаза 3, Шаг 8) — трата биомассы, только на забег ---
+var bought_talents: Array[String] = []
 
 # ── Забег ────────────────────────────────────────────────────────
 
-# Начать забег: старт-узел + свежая армия + биомасса 0.
-func start_run(start_id: String) -> void:
+# Начать забег с заданным составом армии (типы списком). Обнуляет всё состояние.
+func begin_run(start_id: String, picks: Array) -> void:
 	current_node = start_id
 	passed = [start_id]
 	biomass = 0
 	last_corpses = 0
 	last_reward = 0
+	bought_talents = []
 	army = []
 	_next_zid = 0
+	for type in picks:
+		add_zombie(type)
 	clear_squads()
+	print("[army] забег начат: %d зомби, вес %d — %s" % [army.size(), get_army_weight(), army])
+
+# Забег со стандартным составом (fallback, если экран набора пропущен).
+func start_run(start_id: String) -> void:
+	var picks := []
 	for type in START_ARMY:
 		for i in START_ARMY[type]:
-			add_zombie(type)
-	print("[army] забег начат: %d зомби, вес %d — %s" % [army.size(), get_army_weight(), army])
+			picks.append(type)
+	begin_run(start_id, picks)
 
 # Перейти на узел (карта вызывает после клика по доступному)
 func go_to(node_id: String) -> void:
@@ -66,6 +83,7 @@ func reset() -> void:
 	biomass = 0
 	last_corpses = 0
 	last_reward = 0
+	bought_talents = []
 	army = []
 	_next_zid = 0
 	clear_squads()
@@ -113,7 +131,7 @@ func get_army() -> Array[Dictionary]:
 
 func clear_squads() -> void:
 	squads = []
-	for i in MAX_SQUADS:
+	for i in squad_limit():
 		squads.append([])
 
 func zombie_by_id(zid: int) -> Dictionary:
@@ -150,7 +168,7 @@ func add_to_squad(zid: int, idx: int) -> bool:
 		return false
 	if squad_of(zid) != -1:
 		return false
-	if squad_weight(idx) + zombie_weight(zid) > SQUAD_CAP:
+	if squad_weight(idx) + zombie_weight(zid) > squad_cap():
 		return false
 	squads[idx].append(zid)
 	return true
@@ -173,3 +191,76 @@ func deployed_count() -> int:
 	for s in squads:
 		c += s.size()
 	return c
+
+# ── Таланты ──────────────────────────────────────────────────────
+
+func has_talent(id: String) -> bool:
+	return bought_talents.has(id)
+
+func _bought_in_branch(branch: String) -> int:
+	var n := 0
+	for tid in bought_talents:
+		if TalentDB.by_id(tid).get("branch", "") == branch:
+			n += 1
+	return n
+
+# Цена таланта = цена следующей покупки в его ветке (10 → 20 → 30 …)
+func talent_cost(id: String) -> int:
+	var t := TalentDB.by_id(id)
+	if t.is_empty():
+		return 999999
+	return TalentDB.next_cost(_bought_in_branch(t.branch))
+
+func can_buy_talent(id: String) -> bool:
+	return not has_talent(id) and not TalentDB.by_id(id).is_empty() and biomass >= talent_cost(id)
+
+func buy_talent(id: String) -> bool:
+	if not can_buy_talent(id):
+		return false
+	biomass -= talent_cost(id)
+	bought_talents.append(id)
+	_recompute_army_max_hp()
+	return true
+
+# --- эффекты талантов ---
+
+# Прибавка к стату (max_hp / speed / bite_damage) для типа зомби
+func talent_stat_add(ztype: String, key: String) -> int:
+	var total := 0
+	for tid in bought_talents:
+		var e = TalentDB.by_id(tid).get("effect", {})
+		if e.get("kind") == "stat" and e.get("ztype") == ztype and e.get("key") == key:
+			total += int(e.get("add", 0))
+	return total
+
+func _has_rule(rule: String) -> bool:
+	for tid in bought_talents:
+		if TalentDB.by_id(tid).get("effect", {}).get("rule", "") == rule:
+			return true
+	return false
+
+func squad_cap() -> int:
+	return SQUAD_CAP + (1 if _has_rule("slot") else 0)
+
+func squad_limit() -> int:
+	return MAX_SQUADS + (1 if _has_rule("squad") else 0)
+
+func biomass_mult() -> float:
+	return 1.25 if _has_rule("biomass_mult") else 1.0
+
+# Множитель урона по двери для типа (Таран у толстяков)
+func door_mult(ztype: String) -> float:
+	return 2.0 if ztype == "fat" and _has_rule("door_mult") else 1.0
+
+func upgrades_unlocked() -> bool:
+	return _has_rule("upgrade")
+
+# Купили талант на +max_hp — сразу поднимаем максимум и текущее HP в армии
+func _recompute_army_max_hp() -> void:
+	for z in army:
+		var base_max: int = ZTYPE.get(z.type, ZTYPE["normal"]).max_hp
+		var new_max: int = base_max + talent_stat_add(z.type, "max_hp")
+		var delta: int = new_max - z.max_hp
+		z.max_hp = new_max
+		if delta > 0:
+			z.hp += delta
