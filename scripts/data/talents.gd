@@ -2,7 +2,7 @@ extends RefCounted
 # Каталог талантов (Фаза 3, Шаг 8). Подключается: const TalentDB = preload("res://scripts/data/talents.gd")
 # Цена в ветке растёт: N-я покупка в ветке стоит 10*N (10 → 20 → 30 …).
 # Числа эффектов — черновые, калибруются плейтестом.
-# Купленные таланты живут в GameState.bought_talents (сбрасываются в start_run).
+# Купленные таланты живут в GameState.bought_talents (сбрасываются в begin_run).
 
 const COST_STEP := 10
 
@@ -31,15 +31,15 @@ const TALENTS := [
 	  "desc": "Толстякам +40 к макс. HP",
 	  "effect": { "kind": "stat", "ztype": "fat", "key": "max_hp", "add": 40 } },
 	{ "id": "f_wall", "branch": "fat", "name": "Таран",
-	  "desc": "Толстяки ломают двери в 2 раза быстрее",
+	  "desc": "Толстяки бьют окна и костёр в 2 раза сильнее",
 	  "effect": { "kind": "rule", "rule": "door_mult" } },
 
 	# ── ветка general ───────────────────────────────
 	{ "id": "g_slot",    "branch": "general", "name": "Больше места",
-	  "desc": "+1 слот в каждом отряде",
+	  "desc": "+1 слот в каждом отряде (пока не действует: отряды отменены)",
 	  "effect": { "kind": "rule", "rule": "slot" } },
 	{ "id": "g_squad",   "branch": "general", "name": "Лишний отряд",
-	  "desc": "+1 отряд",
+	  "desc": "+1 отряд (пока не действует: отряды отменены)",
 	  "effect": { "kind": "rule", "rule": "squad" } },
 	{ "id": "g_bio",     "branch": "general", "name": "Пожиратели",
 	  "desc": "+25% биомассы за бой",

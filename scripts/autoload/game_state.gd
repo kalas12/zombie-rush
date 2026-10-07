@@ -6,32 +6,38 @@ extends Node
 #   Path: res://scripts/autoload/game_state.gd, Node Name: GameState, Add.
 
 const TalentDB = preload("res://scripts/data/talents.gd")
+const Scenes = preload("res://scripts/scenes.gd")
 
 # --- Карта / прогресс (Фаза 2) ---
 var current_node := ""              # id узла, где игрок сейчас ("" = забег не начат)
 var passed: Array[String] = []      # id пройденных узлов
 var pending_node := ""              # узел, ради которого запущена под-сцена (бой/событие/…)
 var pending_type := ""              # тип этого узла
+var pending_battle := ""            # для боя: путь к BattleType (.tres) этого узла
 var biomass := 0                    # опыт-валюта: копится с находок и боёв (тратим позже)
 var last_corpses := 0               # убитых защитников в последнем бою (для экрана награды)
 var last_reward := 0                # биомасса, начисленная за последнюю победу
+var last_fled := 0                  # сбежавших защитников (трупа не дают)
+var last_lost := 0                  # своих зомби погибло в последнем бою
 
 # --- Персистентная армия зомби (Фаза 3) ---
 # Каждый зомби армии — словарь: { id, type, hp, max_hp, loot }
-# Числа — из «04 — Content». weight = место в отряде. Остальное — статы для боя.
+# Типы зомби армии. Новый тип = новая строка здесь + строка в battle_config.ZOMBIE (клетки).
+# max_hp — HP в армии (лечение/награды считают в нём). speed и bite_damage — базы, к которым
+# таланты дают прибавку; в бою клеточные шаг/укус растут пропорционально (battle_setup.gd).
+# weight — вес при наборе стартовой армии.
 const ZTYPE := {
-	"normal": { "max_hp": 42,  "weight": 1, "speed": 95.0,  "bite_damage": 11, "bite_cooldown": 0.6, "texture": "res://assets/units/basic.png" },
-	"runner": { "max_hp": 24,  "weight": 2, "speed": 160.0, "bite_damage": 7,  "bite_cooldown": 0.5, "texture": "res://assets/units/fast.png" },
-	"fat":    { "max_hp": 120, "weight": 3, "speed": 58.0,  "bite_damage": 20, "bite_cooldown": 0.8, "texture": "res://assets/units/armored.png" },
+	"normal": { "name": "обычный", "max_hp": 42,  "weight": 1, "speed": 95.0,  "bite_damage": 11, "texture": "res://assets/units/basic.png" },
+	"runner": { "name": "бегун",   "max_hp": 24,  "weight": 2, "speed": 160.0, "bite_damage": 7,  "texture": "res://assets/units/fast.png" },
+	"fat":    { "name": "толстяк", "max_hp": 120, "weight": 3, "speed": 58.0,  "bite_damage": 20, "texture": "res://assets/units/armored.png" },
 }
-const START_ARMY := { "normal": 5 }            # стартовый состав забега
 
 var army: Array[Dictionary] = []
 var _next_zid := 0                             # счётчик уникальных id зомби
 
-# --- Отряды (Фаза 3, Шаг 2) ---
-# squads[i] = массив id зомби. Базово 5 отрядов, вместимость по весу = 5;
-# таланты g_squad / g_slot их увеличивают — см. squad_limit() / squad_cap().
+# --- Отряды (Фаза 3, Шаг 2) — В БОЮ НЕ ИСПОЛЬЗУЮТСЯ (бой пошаговый, армия выставляется
+# поштучно). Экран «Отряды» скрыт с карты; убрать вместе с талантами g_slot/g_squad.
+# squads[i] = массив id зомби. Базово 5 отрядов, вместимость по весу = 5.
 const MAX_SQUADS := 5
 const SQUAD_CAP := 5
 
@@ -47,26 +53,13 @@ var bought_talents: Array[String] = []
 
 # Начать забег с заданным составом армии (типы списком). Обнуляет всё состояние.
 func begin_run(start_id: String, picks: Array) -> void:
+	_clear_run()
 	current_node = start_id
 	passed = [start_id]
-	biomass = 0
-	last_corpses = 0
-	last_reward = 0
-	bought_talents = []
-	army = []
-	_next_zid = 0
 	for type in picks:
 		add_zombie(type)
 	clear_squads()
 	print("[army] забег начат: %d зомби, вес %d — %s" % [army.size(), get_army_weight(), army])
-
-# Забег со стандартным составом (fallback, если экран набора пропущен).
-func start_run(start_id: String) -> void:
-	var picks := []
-	for type in START_ARMY:
-		for i in START_ARMY[type]:
-			picks.append(type)
-	begin_run(start_id, picks)
 
 # Перейти на узел (карта вызывает после клика по доступному)
 func go_to(node_id: String) -> void:
@@ -74,24 +67,56 @@ func go_to(node_id: String) -> void:
 	if not passed.has(node_id):
 		passed.append(node_id)
 
-# Полный сброс (город → «заново»); карта потом сама вызовет start_run().
+# Полный сброс (город / поражение → «заново»); карта потом откроет набор стартовой армии.
 func reset() -> void:
+	_clear_run()
 	current_node = ""
 	passed = []
 	pending_node = ""
 	pending_type = ""
+	pending_battle = ""
+	clear_squads()
+
+func _clear_run() -> void:
 	biomass = 0
-	last_corpses = 0
-	last_reward = 0
+	_clear_last_battle()
 	bought_talents = []
 	army = []
 	_next_zid = 0
-	clear_squads()
+
+# Узел, ради которого открыта под-сцена (бой/событие/стоянка), пройден → назад на карту.
+func finish_node() -> void:
+	if pending_node != "":
+		go_to(pending_node)
+	pending_node = ""
+	pending_type = ""
+	pending_battle = ""
+	_clear_last_battle()
+	get_tree().change_scene_to_file(Scenes.MAP)
+
+func _clear_last_battle() -> void:
+	last_corpses = 0
+	last_reward = 0
+	last_fled = 0
+	last_lost = 0
+
+# «Начать заново» с экранов финала/поражения
+func restart_run() -> void:
+	reset()
+	get_tree().change_scene_to_file(Scenes.MAP)
 
 # ── Армия ────────────────────────────────────────────────────────
 
+# Данные типа зомби (неизвестный тип → обычный)
+func ztype(type: String) -> Dictionary:
+	return ZTYPE.get(type, ZTYPE["normal"])
+
+# Имя типа по-русски, строчными («обычный»)
+func ztype_name(type: String) -> String:
+	return ZTYPE[type].name if ZTYPE.has(type) else type
+
 func add_zombie(type: String) -> Dictionary:
-	var t: Dictionary = ZTYPE.get(type, ZTYPE["normal"])
+	var t := ztype(type)
 	var z := {
 		"id": _next_zid,
 		"type": type,
@@ -116,16 +141,12 @@ func heal_zombie(id: int, amount: int) -> void:
 			z.hp = mini(z.hp + amount, z.max_hp)
 			return
 
-# Суммарный вес армии (места в отрядах): normal 1, runner 2, fat 3.
+# Суммарный вес армии (бюджет стартовой армии): normal 1, runner 2, fat 3.
 func get_army_weight() -> int:
 	var w := 0
 	for z in army:
-		var t: Dictionary = ZTYPE.get(z.type, { "weight": 1 })
-		w += t.weight
+		w += int(ztype(z.type).weight)
 	return w
-
-func get_army() -> Array[Dictionary]:
-	return army
 
 # ── Отряды ───────────────────────────────────────────────────────
 
@@ -144,8 +165,7 @@ func zombie_weight(zid: int) -> int:
 	var z := zombie_by_id(zid)
 	if z.is_empty():
 		return 1
-	var t: Dictionary = ZTYPE.get(z.type, { "weight": 1 })
-	return t.weight
+	return int(ztype(z.type).weight)
 
 # В каком отряде зомби (-1 = ни в каком, в резерве)
 func squad_of(zid: int) -> int:
@@ -248,7 +268,7 @@ func squad_limit() -> int:
 func biomass_mult() -> float:
 	return 1.25 if _has_rule("biomass_mult") else 1.0
 
-# Множитель урона по двери для типа (Таран у толстяков)
+# Множитель урона по окнам и костру в бою для типа (талант «Таран» у толстяков)
 func door_mult(ztype: String) -> float:
 	return 2.0 if ztype == "fat" and _has_rule("door_mult") else 1.0
 
@@ -258,7 +278,7 @@ func upgrades_unlocked() -> bool:
 # Купили талант на +max_hp — сразу поднимаем максимум и текущее HP в армии
 func _recompute_army_max_hp() -> void:
 	for z in army:
-		var base_max: int = ZTYPE.get(z.type, ZTYPE["normal"]).max_hp
+		var base_max: int = ztype(z.type).max_hp
 		var new_max: int = base_max + talent_stat_add(z.type, "max_hp")
 		var delta: int = new_max - z.max_hp
 		z.max_hp = new_max

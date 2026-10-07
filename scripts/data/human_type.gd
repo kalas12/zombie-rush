@@ -1,15 +1,13 @@
 class_name HumanType
 extends Resource
 
-# Данные одного типа защитника. Новый тип = новый .tres в resources/humans/.
-# Общее поведение (скорость, паника, дистанции преследования) — в Config.
+# Данные одного типа защитника (пошаговый бой). Новый тип = новый .tres в resources/humans/.
+# Общие правила (паника, натиск, окружение) — в scripts/battle/battle_config.gd.
 
 @export var display_name := "Защитник"
 @export var texture: Texture2D
-@export var melee := false          # true = бьёт вплотную, false = стрелок
-@export var max_hp := 50
-@export var damage := 10
-@export var fire_rate := 0.5         # секунд между выстрелами/ударами
-@export var attack_range := 220.0
-@export var max_ammo := 10           # -1 = без патронов (ближний бой)
-@export var reload_time := 2.0
+@export var max_hp := 30
+@export var reach := 1               # дальность атаки в клетках во все 8 сторон; 1 = соседняя, 0 = не атакует
+@export var damage := 3              # урон за удар/выстрел
+@export var walks := false           # бить некого → шаг к зомби на освещённой клетке
+@export var coward := false          # паникует, как только увидел зомби (мирный)

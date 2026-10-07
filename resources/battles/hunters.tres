@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="BattleType" load_steps=7 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/battle_type.gd" id="1_bt"]
+[ext_resource type="Script" path="res://scripts/data/human_type.gd" id="2_ht"]
+[ext_resource type="Resource" path="res://resources/humans/shooter.tres" id="21_shooter"]
+[ext_resource type="Resource" path="res://resources/humans/shotgunner.tres" id="23_shotgunner"]
+[ext_resource type="Resource" path="res://resources/humans/melee.tres" id="22_melee"]
+[ext_resource type="Resource" path="res://resources/humans/axe.tres" id="24_axe"]
+
+[resource]
+script = ExtResource("1_bt")
+display_name = "Охотники"
+defenders = Array[ExtResource("2_ht")]([ExtResource("21_shooter"), ExtResource("23_shotgunner"), ExtResource("22_melee"), ExtResource("24_axe")])
+strength = 1.0

@@ -6,26 +6,30 @@ extends Node2D
 # Тип и связи узла — в MAP_NODES ниже (по id).
 # Клик по доступному узлу грузит его сцену (бой/событие/стоянка/город).
 
+const UI = preload("res://scripts/ui.gd")
+const Scenes = preload("res://scripts/scenes.gd")
+
 const NODE_R := 22.0   # зона клика вокруг узла
 const ICON := 72.0     # размер иконки узла (px карты)
 
-const START_ZOOM := 0.62   # стартовый зум камеры (больше = крупнее карта)
-const ZOOM_MIN := 0.35
+const FIT_MARGIN := 40.0   # отступ вокруг узлов при стартовом зуме «вся карта в кадре» (px экрана)
+const ZOOM_MIN := 0.3
 const ZOOM_MAX := 1.4
 
-# id → тип, связи вверх, (для боёв) какую сцену грузить.
+# id → тип, связи вверх, (для боёв) какой BattleType (.tres) — состав защитников.
 # Позиция берётся из Marker2D "Nodes/<id>".
+const B := "res://resources/battles/"
 const MAP_NODES := [
 	{ "id": "n0",  "type": "start",  "next": ["n1", "n2"] },
-	{ "id": "n1",  "type": "battle", "next": ["n3", "n4"],  "scene": "res://scenes/battle_a.tscn" },
-	{ "id": "n2",  "type": "battle", "next": ["n4", "n5"],  "scene": "res://scenes/battle_b.tscn" },
+	{ "id": "n1",  "type": "battle", "next": ["n3", "n4"],  "battle": B + "refugees.tres" },
+	{ "id": "n2",  "type": "battle", "next": ["n4", "n5"],  "battle": B + "camp.tres" },
 	{ "id": "n3",  "type": "event",  "next": ["n6"] },
-	{ "id": "n4",  "type": "battle", "next": ["n6", "n7"],  "scene": "res://scenes/battle_a.tscn" },
+	{ "id": "n4",  "type": "battle", "next": ["n6", "n7"],  "battle": B + "camp.tres" },
 	{ "id": "n5",  "type": "loot",   "next": ["n7"] },
 	{ "id": "n6",  "type": "camp",   "next": ["n8", "n9"] },
-	{ "id": "n7",  "type": "battle", "next": ["n9", "n10"], "scene": "res://scenes/battle_a.tscn" },
+	{ "id": "n7",  "type": "battle", "next": ["n9", "n10"], "battle": B + "hunters.tres" },
 	{ "id": "n8",  "type": "event",  "next": ["n11"] },
-	{ "id": "n9",  "type": "battle", "next": ["n11", "n12"], "scene": "res://scenes/battle_a.tscn" },
+	{ "id": "n9",  "type": "battle", "next": ["n11", "n12"], "battle": B + "veterans.tres" },
 	{ "id": "n10", "type": "loot",   "next": ["n12"] },
 	{ "id": "n11", "type": "event",  "next": ["n13"] },
 	{ "id": "n12", "type": "camp",   "next": ["n13"] },
@@ -66,34 +70,29 @@ func _ready() -> void:
 		return
 	if GameState.current_node == "":
 		# новый забег — сперва экран набора стартовой армии
-		get_tree().change_scene_to_file("res://scenes/start_army.tscn")
+		# (deferred: в _ready главной сцены дерево ещё занято добавлением узлов)
+		get_tree().change_scene_to_file.call_deferred(Scenes.START_ARMY)
 		return
 	if _cam != null:
-		_cam.zoom = Vector2(START_ZOOM, START_ZOOM)
+		_fit_camera()
 	_build_hud()
 	queue_redraw()
 
 func _build_hud() -> void:
 	var cl := CanvasLayer.new()
 	add_child(cl)
-	_biomass_label = Label.new()
+	_biomass_label = UI.outlined(20, UI.GOOD)
 	_biomass_label.position = Vector2(16, 12)
-	_biomass_label.add_theme_font_size_override("font_size", 20)
-	_biomass_label.add_theme_color_override("font_color", Color("86c541"))
-	_biomass_label.add_theme_color_override("font_outline_color", Color.BLACK)
-	_biomass_label.add_theme_constant_override("outline_size", 4)
 	cl.add_child(_biomass_label)
 
-	var squads_btn := Button.new()
-	squads_btn.text = "Отряды"
-	squads_btn.position = Vector2(16, 44)
-	squads_btn.pressed.connect(func(): get_tree().change_scene_to_file("res://scenes/squads.tscn"))
+	# «Отряды» спрятаны: бой пошаговый, армия выставляется поштучно (экран пока не удалён)
+	var squads_btn := UI.button("Отряды", get_tree().change_scene_to_file.bind(Scenes.SQUADS))
+	squads_btn.position = Vector2(16, 78)
+	squads_btn.visible = false
 	cl.add_child(squads_btn)
 
-	var talents_btn := Button.new()
-	talents_btn.text = "Таланты"
-	talents_btn.position = Vector2(16, 78)
-	talents_btn.pressed.connect(func(): get_tree().change_scene_to_file("res://scenes/talents.tscn"))
+	var talents_btn := UI.button("Таланты", get_tree().change_scene_to_file.bind(Scenes.TALENTS))
+	talents_btn.position = Vector2(16, 44)
 	cl.add_child(talents_btn)
 
 func _process(_delta: float) -> void:
@@ -179,6 +178,17 @@ func _unhandled_input(event: InputEvent) -> void:
 		_cam.position -= event.relative / _cam.zoom.x
 		_cam.position = _cam.position.clamp(Vector2(-520, -1000), Vector2(520, 1000))
 
+# Старт: камера по центру всех узлов, зум — чтобы карта целиком влезла в окно
+func _fit_camera() -> void:
+	var box := Rect2(_node_pos(MAP_NODES[0].id), Vector2.ZERO)
+	for n in MAP_NODES:
+		box = box.expand(_node_pos(n.id))
+	box = box.grow(ICON * 0.5)
+	var vp := get_viewport().get_visible_rect().size - Vector2(FIT_MARGIN, FIT_MARGIN) * 2
+	var z: float = clampf(minf(vp.x / box.size.x, vp.y / box.size.y), ZOOM_MIN, ZOOM_MAX)
+	_cam.zoom = Vector2(z, z)
+	_cam.position = box.get_center()
+
 func _zoom_by(f: float) -> void:
 	var z: float = clampf(_cam.zoom.x * f, ZOOM_MIN, ZOOM_MAX)
 	_cam.zoom = Vector2(z, z)
@@ -195,15 +205,15 @@ func _enter_node(n) -> void:
 	GameState.pending_type = n.type
 	match n.type:
 		"battle":
-			if n.has("scene"):
-				get_tree().change_scene_to_file(n.scene)
+			GameState.pending_battle = n.get("battle", "")   # нет BattleType → состав арены по умолчанию
+			get_tree().change_scene_to_file(Scenes.BATTLE)
 		"event":
-			get_tree().change_scene_to_file("res://scenes/event.tscn")
+			get_tree().change_scene_to_file(Scenes.EVENT)
 		"camp", "loot":
-			get_tree().change_scene_to_file("res://scenes/node_stop.tscn")
+			get_tree().change_scene_to_file(Scenes.STOP)
 		"city":
 			GameState.go_to(n.id)
-			get_tree().change_scene_to_file("res://scenes/city.tscn")
+			get_tree().change_scene_to_file(Scenes.CITY)
 		_:
 			GameState.go_to(n.id)
 			queue_redraw()

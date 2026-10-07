@@ -1,13 +1,13 @@
 [gd_resource type="Resource" script_class="HumanType" load_steps=3 format=3]
 
 [ext_resource type="Script" path="res://scripts/data/human_type.gd" id="1_type"]
-[ext_resource type="Texture2D" uid="uid://cqwch2jvvvf43" path="res://assets/units/melee.png" id="2_tex"]
+[ext_resource type="Texture2D" uid="uid://ba7ravi6takbm" path="res://assets/units/axe_melee.png" id="2_tex"]
 
 [resource]
 script = ExtResource("1_type")
-display_name = "Ближний"
+display_name = "Топор"
 texture = ExtResource("2_tex")
-max_hp = 30
+max_hp = 48
 reach = 1
-damage = 2
+damage = 3
 walks = true

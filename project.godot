@@ -11,7 +11,7 @@ config_version=5
 [application]
 
 config/name="Zombie_rush"
-run/main_scene="uid://kypntjeq5p4d"
+run/main_scene="uid://bjjdce4iq0h2p"
 config/features=PackedStringArray("4.4", "GL Compatibility")
 config/icon="res://icon.svg"
 
@@ -20,7 +20,13 @@ config/icon="res://icon.svg"
 Config="*res://scripts/autoload/config.gd"
 GameState="*res://scripts/autoload/game_state.gd"
 
+[display]
+
+window/size/mode=2
+window/stretch/mode="canvas_items"
+
 [rendering]
 
 renderer/rendering_method="gl_compatibility"
 renderer/rendering_method.mobile="gl_compatibility"
+environment/defaults/default_clear_color=Color(0.043, 0.055, 0.078, 1)

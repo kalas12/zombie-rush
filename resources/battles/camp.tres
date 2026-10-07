@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="BattleType" load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/battle_type.gd" id="1_bt"]
+[ext_resource type="Script" path="res://scripts/data/human_type.gd" id="2_ht"]
+[ext_resource type="Resource" path="res://resources/humans/shooter.tres" id="21_shooter"]
+[ext_resource type="Resource" path="res://resources/humans/melee.tres" id="22_melee"]
+
+[resource]
+script = ExtResource("1_bt")
+display_name = "Лагерь"
+defenders = Array[ExtResource("2_ht")]([ExtResource("21_shooter"), ExtResource("21_shooter"), ExtResource("22_melee"), ExtResource("22_melee")])
+strength = 1.0
